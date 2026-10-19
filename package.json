@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-scrutiny",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Scrutiny disk health (S.M.A.R.T.) in Gladys Assistant: one device per disk, scene triggers when a disk fails, recovers or stops being collected, a status widget.",
   "type": "module",
   "main": "index.js",
   "scripts": {

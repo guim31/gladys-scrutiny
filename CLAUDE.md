@@ -31,16 +31,20 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only: src/app.js registers the handlers before connect()
+src/app.js                        every SDK handler -> the hub (also used by the tests)
+src/hub.js                        reading timer, health, states, transitions -> scene events, views
+src/devices.js                    one device per disk + the instance device: features, names, values
+src/scrutiny/client.js            Scrutiny REST API (fetch), errors by kind, platform ids, normalization
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget `scrutiny` (manifest `widgets`)
+src/texts.js                      connection, error, health, report and action texts (4 languages)
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
+src/store.js, src/problems.js     /data/scrutiny-state.json; one log line per repeated failure
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (en and fr mandatory)
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+                                  and helpers/fakeScrutiny.js (real answers in test/fixtures/scrutiny)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +74,10 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, widget content, feature names, scene outputs, manifest texts, and
+  `docs/en.md`, `docs/fr.md`, `docs/de.md`, `docs/es.md`, kept in sync
+  (`test/i18n.test.js` checks the languages and the doc sections).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -197,6 +203,47 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
 - Les filtres de scène ne font qu'égalité et appartenance : un seuil reste le travail d'un capteur.
 - **Les clés de widgets, de déclencheurs et d'actions sont figées une fois publiées.**
 - `gladys_version` `>=5.1.0` dès qu'il y a widgets, déclencheurs ou actions de scène.
+
+## Scrutiny (propre à ce dépôt)
+
+- **API** vérifiée sur `ghcr.io/analogj/scrutiny:v0.9.5-omnibus` (dernière release, 30/09/2026),
+  alimentée par des envois de collecteur simulés (`POST /api/devices/register`, puis
+  `POST /api/device/<id>/smart` avec les sorties `smartctl --json` de
+  `webapp/backend/pkg/models/testdata` de Scrutiny). Réponses dans `test/fixtures/scrutiny`.
+  L'image `master-omnibus` date de février 2026 : ne pas s'y fier.
+- **Clé des disques** : depuis la **v0.9**, `GET /api/summary` indexe les disques par
+  `scrutiny_uuid` et les routes sont `/api/device/<scrutiny_uuid>/…` ; en **v0.8**, c'était le WWN.
+  On lit donc les détails avec la clé du résumé, quelle qu'elle soit. **Le WWN n'est pas unique**
+  (ponts USB, firmwares paresseux : `collector/pkg/detect/scrutiny_uuid.go`) : l'identifiant Gladys
+  est `id-<scrutiny_uuid>`, l'UUID v5 de `modèle + série + WWN` dans l'espace de noms
+  `3ea22b35-…`. En v0.8, on le calcule à partir des mêmes champs du résumé, comme la migration
+  v0.8 → v0.9 (`scrutiny_repository_migrations.go`) : l'appareil survit à la mise à jour. Vecteur
+  vérifié sur `web/testdata/register-devices-req.json`.
+- `?duration_key=week` ne rend **aucun résultat** pour un disque non collecté depuis 7 jours : on
+  redemande alors `forever`, et un résultat vide ne remplace jamais les attributs connus.
+- Réglages illisibles (5xx, proxy) : on reprend les derniers lus (gardés dans `/data`) ; jamais lus
+  sur ce serveur, aucun passage en échec ni retour n'est annoncé dans ce cycle (seuils devinés).
+  Un 404 sur `/api/settings` (Scrutiny ancien) vaut réglages par défaut.
+- Un échec S.M.A.R.T. global (`smart_status.passed: false`) n'a souvent **aucun attribut** en échec :
+  la variable `reason` dit alors « test global S.M.A.R.T. en échec » / « seuils de Scrutiny
+  dépassés ».
+- **État d'un disque** = celui du tableau de bord : `device_status & status_threshold`
+  (`GET /api/settings` → `settings.metrics.status_threshold`, 1 S.M.A.R.T., 2 Scrutiny, 3 les deux,
+  défaut 3) ; « inconnu » sans collecte. `device_status` est recalculé **à chaque envoi** (v0.9.5 :
+  un envoi sain efface un échec), d'où le déclencheur « redevient OK ». L'avertissement n'existe pas
+  côté serveur : un attribut de la dernière collecte avec un `status` non nul (bits 1 échec
+  S.M.A.R.T., 2 avertissement, 4 échec Scrutiny) alors que le disque passe ;
+  `status_filter_attributes = 1` limite aux attributs `critical` des `metadata`.
+- `collector_date` vaut `0001-01-01T00:00:00Z` (temps zéro de Go) pour un disque jamais collecté :
+  traité comme absent. Il vient de `local_time.time_t` du `smartctl`, pas de l'heure d'envoi.
+- `GET /api/device/<id>/details` renvoie ~40 Ko (métadonnées des attributs) et l'historique agrégé
+  par jour : on demande `?duration_key=week` et on ne relit qu'après une nouvelle collecte.
+- Les disques **archivés** (`device.archived`) sont ignorés, comme sur le tableau de bord. Un disque
+  absent garde son état sauvegardé une semaine (désarchivé : pas d'annonce).
+- Secteurs réalloués / en attente : attributs ATA `5` et `197` (`raw_value`), seulement si présents.
+  NVMe (`media_errors`…) et SAS (`scsi_grown_defect_list`) ne sont pas publiés en v1.
+- Pas d'authentification dans Scrutiny : identifiants facultatifs pour un proxy inverse, en
+  `Basic`. Une erreur 5xx vient presque toujours d'InfluxDB arrêté.
 
 ## Store
 

@@ -1,41 +1,86 @@
 // -----------------------------------------------------------------------------
-// Scene actions (SDK v0.14+, Gladys 5.1+).
+// Scene action handlers (manifest `scene_actions`, Gladys 5.1+).
 //
-// A scene action is an OPERATION a scene author places in a scene, with
-// parameters and a result: "identify this device", "take a snapshot", "clean
-// these rooms". Each one is declared in the manifest `scene_actions` field
-// (key, label, `fields` in the config_schema grammar, scalar `outputs`) and
-// handled here, keyed by that same `key`; index.js registers every entry with
-// `gladys.onSceneAction(key, ...)`.
-//
-// Scene TRIGGERS are the other direction ("this happened"): they are fired by
-// the device that observes the event, see src/devices/motionSensor.js.
-//
-// The rules that matter:
-//   - `fields` arrive RESOLVED: scene variables substituted, defaults applied,
-//     validated by the core; a `"source": "devices"` field is the chosen
-//     device external_id;
-//   - resolve an object of the declared `outputs` (scalars only), readable by
-//     the following actions of the scene, or `undefined` for none. Keys not
-//     declared in the manifest are dropped by the core;
-//   - throwing fails THIS action only: the scene logs it and continues. A
-//     scene action is never a condition: return an output and let the scene
-//     author gate on it;
-//   - never fire a scene event as a consequence of a received action: a scene
-//     bound to that event would loop through the integration.
+// "Has this disk failed?" is already a scene condition on the device feature.
+// The actions are about what a condition cannot do: put a disk's state in a
+// message ("WDC WD140EDFZ (sda): Warning, 32 °C — Spin-Up Time"), and count
+// the failed disks across Scrutiny, added to Gladys or not, for a weekly
+// report. Both read Scrutiny again when the last read is older than a minute.
 // -----------------------------------------------------------------------------
 
-import { createLogger } from '@gladysassistant/integration-sdk';
-import { signalDevice } from './devices/index.js';
+import { collectionAgeHours } from './devices.js';
+import { failureReason } from './hub.js';
+import { ACTION_TEXT, HEALTH_TEXT, STALE_TEXT, ageText, labelled, pick } from './texts.js';
 
-const logger = createLogger({ name: 'scenes' });
+// Names listed in the `names` output, at most (the rest is counted).
+export const MAX_LISTED_NAMES = 20;
+
+async function readable(hub) {
+  // An error of the last reading is not final: read again first.
+  if (!hub.client) {
+    hub.assertReadable();
+  }
+  await hub.refreshIfStale();
+  hub.assertReadable();
+}
+
+/** "41 °C, 3 days without collection — Reallocated Sectors Count". */
+export function describe(disk, now, language) {
+  const parts = [pick(HEALTH_TEXT[disk.health], language)];
+  if (disk.temperature !== null) {
+    parts.push(`${disk.temperature} °C`);
+  }
+  if (disk.stale) {
+    parts.push(STALE_TEXT[language].since(ageText(collectionAgeHours(disk, now), language)));
+  }
+  const attributes = [...disk.failures, ...disk.warnings].join(', ');
+  return `${labelled(disk.name, parts.join(', '), language)}.${attributes ? ` ${attributes}.` : ''}`;
+}
 
 export const SCENE_ACTIONS = {
-  // The ack is awaited under the action's `timeout_seconds` (15 s in the
-  // manifest), counted from the moment the scene reaches the action.
-  async identify_device(gladys, { fields, config }) {
-    logger.info(`Scene action identify_device <- ${fields.device}`);
-    const signalled = await signalDevice(gladys, fields.device, config);
-    return { signalled };
+  async get_disk_status(hub, { fields = {} }) {
+    await readable(hub);
+    const language = hub.config.language;
+    const disk = hub.find(fields.device);
+    if (!disk) {
+      throw new Error(pick(ACTION_TEXT.unknownDisk, language));
+    }
+    const now = hub.now();
+    return {
+      failed: disk.health === 'failed',
+      health: pick(HEALTH_TEXT[disk.health], language),
+      name: disk.name,
+      model: disk.model,
+      temperature: disk.temperature ?? 0,
+      power_on_hours: disk.powerOnHours ?? 0,
+      collection_age_hours: collectionAgeHours(disk, now) ?? 0,
+      attributes:
+        disk.health === 'failed' && disk.failures.length === 0
+          ? failureReason(disk, hub.settings, language)
+          : [...disk.failures, ...disk.warnings].join(', ').slice(0, 300),
+      sentence: describe(disk, now, language),
+    };
+  },
+
+  async count_failed_disks(hub) {
+    await readable(hub);
+    const disks = hub.list();
+    const names = (health) =>
+      disks
+        .filter((disk) => disk.health === health)
+        .map((disk) => disk.name)
+        .sort((a, b) => a.localeCompare(b));
+    const failed = names('failed');
+    const listed = failed.slice(0, MAX_LISTED_NAMES);
+    return {
+      failed: failed.length,
+      warning: names('warning').length,
+      stale: disks.filter((disk) => disk.stale).length,
+      total: disks.length,
+      names:
+        failed.length > listed.length
+          ? `${listed.join(', ')}, +${failed.length - listed.length}`
+          : listed.join(', '),
+    };
   },
 };

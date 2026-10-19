@@ -30,6 +30,14 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+The integration only reads the Scrutiny web server at the address set in its
+configuration (`GET` requests, on your local network); it never contacts
+anything else and never touches the disks. The optional proxy user and
+password are stored by Gladys and sent only to that address, as basic
+authentication; redirects are not followed. The volume `/data` only holds
+`scrutiny-state.json`: the last health of each disk (by Scrutiny id) and whether its
+collection was stale, to announce each change once.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+and Scrutiny, its collector and the disks it reads.
