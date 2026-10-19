@@ -35,7 +35,7 @@ import {
 import { ATTRIBUTE_STATUS, ERROR_KINDS, ScrutinyClient, ScrutinyError } from './scrutiny/client.js';
 import { hostOf, normalizeConfig } from './config.js';
 import { ProblemLog } from './problems.js';
-import { CONNECTION_TEXT, ERROR_TEXT, REPORT_TEXT, labelled, pick } from './texts.js';
+import { CONNECTION_TEXT, ERROR_TEXT, REASON_TEXT, REPORT_TEXT, labelled, pick } from './texts.js';
 
 const logger = createLogger({ name: 'scrutiny-hub' });
 
@@ -84,6 +84,26 @@ export function problemsOf(details, settings) {
   return { failures, warnings };
 }
 
+export const HEALTHS = ['ok', 'warning', 'failed', 'unknown'];
+
+/**
+ * Why a disk failed, for a message: its failing attributes, else what failed
+ * as a whole (the overall S.M.A.R.T. check of smartctl has no attribute).
+ */
+export function failureReason(disk, settings, language) {
+  if (disk.failures.length > 0) {
+    return disk.failures.join(', ').slice(0, 300);
+  }
+  const reasons = [];
+  if ((disk.deviceStatus & settings.threshold & 1) !== 0) {
+    reasons.push(pick(REASON_TEXT.smart, language));
+  }
+  if ((disk.deviceStatus & settings.threshold & 2) !== 0) {
+    reasons.push(pick(REASON_TEXT.scrutiny, language));
+  }
+  return reasons.join(', ');
+}
+
 /** The health of a disk: 'ok', 'warning', 'failed' or 'unknown'. */
 export function healthOf(disk, details, settings) {
   if (!disk.collectedAt) {
@@ -123,6 +143,7 @@ export class ScrutinyHub {
     /** @type {Map<string, { collectedAt: number|null, details: object }>} by platform id */
     this.details = new Map();
     this.settings = DEFAULT_SETTINGS;
+    this.settingsKnown = true;
     this.readAt = 0;
     this.error = null;
     this.polling = null;
@@ -141,8 +162,27 @@ export class ScrutinyHub {
 
   async start(config) {
     const saved = await this.store.load();
-    const disks = saved.disks && typeof saved.disks === 'object' ? saved.disks : {};
-    this.saved = { disks };
+    // A hand-edited or damaged file must not stop the readings.
+    const disks = {};
+    for (const [id, state] of Object.entries(
+      saved.disks && typeof saved.disks === 'object' ? saved.disks : {},
+    )) {
+      if (state && typeof state === 'object' && HEALTHS.includes(state.health)) {
+        disks[id] = { ...state, stale: state.stale === true, since: Number(state.since) || 0 };
+      }
+    }
+    const settings = saved.settings;
+    this.saved = {
+      disks,
+      ...(settings && [1, 2, 3].includes(settings.threshold)
+        ? {
+            settings: {
+              threshold: settings.threshold,
+              criticalOnly: settings.criticalOnly === true,
+            },
+          }
+        : {}),
+    };
     await this.reconfigure(config);
   }
 
@@ -162,7 +202,7 @@ export class ScrutinyHub {
     if (signature !== this.signature) {
       if (this.signature !== null && JSON.parse(this.signature)[0] !== config.url) {
         // Another Scrutiny: the states saved for the previous one mean nothing.
-        this.saved.disks = {};
+        this.saved = { disks: {} };
         this.store.save(this.saved);
       }
       this.signature = signature;
@@ -277,20 +317,29 @@ export class ScrutinyHub {
     return this.applySuccess(disks, settings);
   }
 
-  /** The Scrutiny settings; the last known ones (or the defaults) when unreadable. */
+  /**
+   * The Scrutiny settings; the last ones read (kept in /data) when unreadable.
+   * @returns {Promise<{ settings: object, known: boolean }>} `known` false when
+   *   they were never read from this server: the defaults are a guess then.
+   */
   async readSettings(client) {
     try {
       const settings = await client.settings();
       this.problems.recover('settings', 'Scrutiny settings read again');
-      return settings;
+      return { settings, known: true, read: true };
     } catch (err) {
       // An unreachable server fails the whole read; another answer (an older
       // Scrutiny, a proxy rule) only costs the settings.
       if (err instanceof ScrutinyError && err.kind === ERROR_KINDS.UNREACHABLE) {
         throw err;
       }
-      this.problems.fail('settings', `Scrutiny settings not read, defaults used: ${err.message}`);
-      return this.settings;
+      this.problems.fail('settings', `Scrutiny settings not read: ${err.message}`);
+      if (this.saved.settings) {
+        return { settings: this.saved.settings, known: true };
+      }
+      // A Scrutiny without the settings route always used its defaults; a
+      // proxy or a server error only hides them: the defaults are a guess.
+      return { settings: DEFAULT_SETTINGS, known: err.kind === ERROR_KINDS.NOT_SCRUTINY };
     }
   }
 
@@ -305,7 +354,9 @@ export class ScrutinyHub {
       for (let disk = queue.shift(); disk; disk = queue.shift()) {
         try {
           const details = await client.details(disk.key);
-          if (client === this.client) {
+          // No result at all (the history was cleaned): the attributes known
+          // stay, and nothing is cached, so they are asked again next time.
+          if (client === this.client && details.attributes.length > 0) {
             this.details.set(disk.id, { collectedAt: disk.collectedAt, details });
           }
         } catch (err) {
@@ -328,7 +379,7 @@ export class ScrutinyHub {
     }
   }
 
-  async applySuccess(disks, settings) {
+  async applySuccess(disks, { settings, known, read = false }) {
     let widgetChanged = this.error !== null || this.readAt === 0;
     if (this.error) {
       logger.info('Scrutiny answers again');
@@ -342,6 +393,7 @@ export class ScrutinyHub {
       widgetChanged = true;
     }
     this.settings = settings;
+    this.settingsKnown = known;
 
     // Everything below up to the events is synchronous: a concurrent read
     // (a new configuration) cannot interleave with it.
@@ -349,6 +401,10 @@ export class ScrutinyHub {
     const next = new Map();
     const events = [];
     let dirty = false;
+    if (read && JSON.stringify(settings) !== JSON.stringify(this.saved.settings)) {
+      this.saved.settings = settings;
+      dirty = true;
+    }
     for (const disk of disks) {
       if (next.has(disk.id)) {
         continue;
@@ -424,6 +480,11 @@ export class ScrutinyHub {
   transition(disk, events) {
     const previous = this.saved.disks[disk.id];
     const now = this.now();
+    if (!this.settingsKnown && (!previous || disk.health !== previous.health)) {
+      // A health computed with guessed settings would announce failures
+      // Scrutiny does not see: compared once the settings are read.
+      return false;
+    }
     if (!previous) {
       // First sight: no event, a disk failed for months is not news.
       this.saved.disks[disk.id] = { health: disk.health, stale: disk.stale, since: now };
@@ -435,12 +496,16 @@ export class ScrutinyHub {
       dirty = true;
     }
     if (disk.health !== 'unknown' && disk.health !== previous.health) {
-      if (disk.health === 'failed' && previous.health !== 'unknown') {
+      if (disk.health === 'failed') {
+        // From "unknown" too: a first collection that fails is news.
         logger.info(`${disk.name} failed`);
         events.push([
           TRIGGERS.FAILED,
           disk,
-          { reason: disk.failures.join(', ').slice(0, 300), temperature: disk.temperature ?? 0 },
+          {
+            reason: failureReason(disk, this.settings, this.config.language),
+            temperature: disk.temperature ?? 0,
+          },
         ]);
       } else if (previous.health === 'failed') {
         const hours = Math.max(0, Math.round((now - previous.since) / 3600_000));

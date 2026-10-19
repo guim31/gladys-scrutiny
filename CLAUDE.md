@@ -213,9 +213,20 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
   L'image `master-omnibus` date de février 2026 : ne pas s'y fier.
 - **Clé des disques** : depuis la **v0.9**, `GET /api/summary` indexe les disques par
   `scrutiny_uuid` et les routes sont `/api/device/<scrutiny_uuid>/…` ; en **v0.8**, c'était le WWN.
-  On lit donc les détails avec la clé du résumé, quelle qu'elle soit. L'identifiant Gladys est le
-  **WWN** (stable entre versions et réinstallations), sinon `id-<uuid>` (NVMe sans WWN), sinon un
-  hash.
+  On lit donc les détails avec la clé du résumé, quelle qu'elle soit. **Le WWN n'est pas unique**
+  (ponts USB, firmwares paresseux : `collector/pkg/detect/scrutiny_uuid.go`) : l'identifiant Gladys
+  est `id-<scrutiny_uuid>`, l'UUID v5 de `modèle + série + WWN` dans l'espace de noms
+  `3ea22b35-…`. En v0.8, on le calcule à partir des mêmes champs du résumé, comme la migration
+  v0.8 → v0.9 (`scrutiny_repository_migrations.go`) : l'appareil survit à la mise à jour. Vecteur
+  vérifié sur `web/testdata/register-devices-req.json`.
+- `?duration_key=week` ne rend **aucun résultat** pour un disque non collecté depuis 7 jours : on
+  redemande alors `forever`, et un résultat vide ne remplace jamais les attributs connus.
+- Réglages illisibles (5xx, proxy) : on reprend les derniers lus (gardés dans `/data`) ; jamais lus
+  sur ce serveur, aucun passage en échec ni retour n'est annoncé dans ce cycle (seuils devinés).
+  Un 404 sur `/api/settings` (Scrutiny ancien) vaut réglages par défaut.
+- Un échec S.M.A.R.T. global (`smart_status.passed: false`) n'a souvent **aucun attribut** en échec :
+  la variable `reason` dit alors « test global S.M.A.R.T. en échec » / « seuils de Scrutiny
+  dépassés ».
 - **État d'un disque** = celui du tableau de bord : `device_status & status_threshold`
   (`GET /api/settings` → `settings.metrics.status_threshold`, 1 S.M.A.R.T., 2 Scrutiny, 3 les deux,
   défaut 3) ; « inconnu » sans collecte. `device_status` est recalculé **à chaque envoi** (v0.9.5 :

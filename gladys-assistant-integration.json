@@ -181,13 +181,13 @@
         "en": "Collection too old after",
         "fr": "Collecte trop ancienne après",
         "de": "Erfassung zu alt nach",
-        "es": "Recogida demasiado antigua tras"
+        "es": "Recopilación demasiado antigua tras"
       },
       "description": {
         "en": "A disk not collected for this long fires \"Disk no longer collected\": a stopped collector, a disk gone.",
         "fr": "Un disque non collecté depuis ce délai déclenche « Disque plus collecté » : collecteur arrêté, disque disparu.",
         "de": "Eine so lange nicht erfasste Festplatte löst „Festplatte nicht mehr erfasst“ aus: Collector gestoppt, Festplatte weg.",
-        "es": "Un disco sin recoger durante este tiempo activa «Disco ya no recogido»: recolector parado, disco desaparecido."
+        "es": "Un disco sin recopilar durante este tiempo activa «Disco ya no recopilado»: recolector parado, disco desaparecido."
       },
       "default": "36",
       "required": true,
@@ -324,10 +324,10 @@
         "es": "Un disco falla"
       },
       "description": {
-        "en": "Scrutiny marks a disk as failed after a collection (S.M.A.R.T. or its own thresholds, as set in Scrutiny).",
-        "fr": "Scrutiny marque un disque en échec après une collecte (S.M.A.R.T. ou ses propres seuils, selon ses réglages).",
-        "de": "Scrutiny markiert eine Festplatte nach einer Erfassung als fehlerhaft (S.M.A.R.T. oder eigene Schwellen, wie eingestellt).",
-        "es": "Scrutiny marca un disco con fallo tras una recogida (S.M.A.R.T. o sus propios umbrales, según su configuración)."
+        "en": "Scrutiny marks a disk as failed, at a collection or after a change of its status threshold.",
+        "fr": "Scrutiny marque un disque en échec, à une collecte ou après un changement de son seuil de statut.",
+        "de": "Scrutiny markiert eine Festplatte als fehlerhaft, bei einer Erfassung oder nach Änderung der Statusschwelle.",
+        "es": "Scrutiny marca un disco con fallo, en una recopilación o tras un cambio de su umbral de estado."
       },
       "fields": [
         {
@@ -397,7 +397,7 @@
         "en": "A failed disk passes again at a new collection, or after a change of the Scrutiny status threshold.",
         "fr": "Un disque en échec repasse au vert à une nouvelle collecte, ou après un changement du seuil de Scrutiny.",
         "de": "Eine fehlerhafte Festplatte ist bei einer neuen Erfassung wieder OK, oder nach einer Änderung der Scrutiny-Schwelle.",
-        "es": "Un disco con fallo vuelve a estar bien en una nueva recogida, o tras un cambio del umbral de Scrutiny."
+        "es": "Un disco con fallo vuelve a estar bien en una nueva recopilación, o tras un cambio del umbral de Scrutiny."
       },
       "fields": [
         {
@@ -451,13 +451,13 @@
         "en": "Disk no longer collected",
         "fr": "Disque plus collecté",
         "de": "Festplatte nicht mehr erfasst",
-        "es": "Disco ya no recogido"
+        "es": "Disco ya no recopilado"
       },
       "description": {
         "en": "No new collection for a disk for the delay of the configuration: the collector stopped, or the disk is gone.",
         "fr": "Plus de collecte pour un disque depuis le délai de la configuration : collecteur arrêté, ou disque disparu.",
         "de": "Keine neue Erfassung einer Festplatte seit der eingestellten Frist: Collector gestoppt oder Festplatte weg.",
-        "es": "Ninguna recogida nueva de un disco desde el plazo configurado: recolector parado o disco desaparecido."
+        "es": "Ninguna recopilación nueva de un disco desde el plazo configurado: recolector parado o disco desaparecido."
       },
       "fields": [
         {
@@ -500,7 +500,7 @@
             "en": "Hours since the collection",
             "fr": "Heures depuis la collecte",
             "de": "Stunden seit der Erfassung",
-            "es": "Horas desde la recogida"
+            "es": "Horas desde la recopilación"
           }
         }
       ]
@@ -604,7 +604,7 @@
             "en": "Hours since the collection",
             "fr": "Heures depuis la collecte",
             "de": "Stunden seit der Erfassung",
-            "es": "Horas desde la recogida"
+            "es": "Horas desde la recopilación"
           }
         },
         {
@@ -641,7 +641,7 @@
         "en": "Counts the disks failed, with a warning, no longer collected and in total, and lists the failed ones, for a report.",
         "fr": "Compte les disques en échec, en avertissement, plus collectés et au total, et nomme ceux en échec, pour un bilan.",
         "de": "Zählt die fehlerhaften Festplatten, die mit Warnung, die nicht mehr erfassten und alle, und nennt die fehlerhaften.",
-        "es": "Cuenta los discos con fallo, con advertencia, ya no recogidos y en total, y nombra los que fallan, para un informe."
+        "es": "Cuenta los discos con fallo, con advertencia, ya no recopilados y en total, y nombra los que fallan, para un informe."
       },
       "timeout_seconds": 60,
       "outputs": [
@@ -672,7 +672,7 @@
             "en": "Disks no longer collected",
             "fr": "Disques plus collectés",
             "de": "Nicht mehr erfasste Festplatten",
-            "es": "Discos ya no recogidos"
+            "es": "Discos ya no recopilados"
           }
         },
         {

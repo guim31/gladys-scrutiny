@@ -36,6 +36,8 @@ export class FakeScrutiny {
       settings: { metrics: { status_threshold: 3, status_filter_attributes: 0 } },
     };
     this.down = false;
+    /** Device files whose newest result `duration_key=week` does not return. */
+    this.olderThanAWeek = new Set();
     /** @type {Record<string, number>} forced HTTP statuses, by path prefix */
     this.statuses = {};
     this.calls = [];
@@ -88,9 +90,13 @@ export class FakeScrutiny {
     if (path === '/api/settings') {
       return { status: 200, body: JSON.stringify(this.settings) };
     }
-    const match = path.match(/^\/api\/device\/([^/]+)\/details\?duration_key=week$/);
-    if (match && this.details[decodeURIComponent(match[1])]) {
-      return { status: 200, body: JSON.stringify(this.details[decodeURIComponent(match[1])]) };
+    const match = path.match(/^\/api\/device\/([^/]+)\/details\?duration_key=(week|forever)$/);
+    const details = match && this.details[decodeURIComponent(match[1])];
+    if (details) {
+      // Scrutiny's `week` covers the last 7 days of results only.
+      const old = match[2] === 'week' && this.olderThanAWeek.has(details.data.device.device_name);
+      const answer = old ? { ...details, data: { ...details.data, smart_results: [] } } : details;
+      return { status: 200, body: JSON.stringify(answer) };
     }
     return { status: 404, body: '404 page not found' };
   }

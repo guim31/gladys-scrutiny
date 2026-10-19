@@ -9,6 +9,7 @@
 // -----------------------------------------------------------------------------
 
 import { collectionAgeHours } from './devices.js';
+import { failureReason } from './hub.js';
 import { ACTION_TEXT, HEALTH_TEXT, STALE_TEXT, ageText, labelled, pick } from './texts.js';
 
 // Names listed in the `names` output, at most (the rest is counted).
@@ -53,7 +54,10 @@ export const SCENE_ACTIONS = {
       temperature: disk.temperature ?? 0,
       power_on_hours: disk.powerOnHours ?? 0,
       collection_age_hours: collectionAgeHours(disk, now) ?? 0,
-      attributes: [...disk.failures, ...disk.warnings].join(', ').slice(0, 300),
+      attributes:
+        disk.health === 'failed' && disk.failures.length === 0
+          ? failureReason(disk, hub.settings, language)
+          : [...disk.failures, ...disk.warnings].join(', ').slice(0, 300),
       sentence: describe(disk, now, language),
     };
   },

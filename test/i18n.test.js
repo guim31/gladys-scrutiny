@@ -17,6 +17,7 @@ import {
   ERROR_TEXT,
   HEALTH_TEXT,
   INIT_FAILED,
+  REASON_TEXT,
   REPORT_TEXT,
   STALE_TEXT,
 } from '../src/texts.js';
@@ -151,6 +152,9 @@ test('every message table of the code has the four languages', () => {
     ...problems(INIT_FAILED, 'INIT_FAILED', MAX.message),
     ...Object.entries(CONNECTION_TEXT).flatMap(([key, value]) =>
       problems(value, `CONNECTION_TEXT.${key}`, MAX.message),
+    ),
+    ...Object.entries(REASON_TEXT).flatMap(([key, value]) =>
+      problems(value, `REASON_TEXT.${key}`, 100),
     ),
     ...Object.entries(ACTION_TEXT).flatMap(([key, value]) =>
       problems(value, `ACTION_TEXT.${key}`, MAX.message),

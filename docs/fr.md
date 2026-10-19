@@ -56,8 +56,9 @@ combien sont en échec.
 
 Ouvrez l'onglet **Découverte** de l'intégration et ajoutez les disques à suivre, ainsi que l'appareil
 **Scrutiny** si vous voulez les totaux. Les disques archivés dans Scrutiny ne sont pas proposés. Un
-disque est identifié par son WWN (son identifiant Scrutiny quand il n'en a pas, comme certains
-disques NVMe) : le changer de port ou de machine garde le même appareil.
+disque est identifié par son identifiant Scrutiny (tiré de son modèle, de son numéro de série et
+de son WWN : un WWN seul n'est pas toujours unique) : le changer de port ou de machine garde le même
+appareil, une mise à jour de Scrutiny v0.8 vers v0.9 aussi.
 
 ## Les appareils
 

@@ -7,10 +7,20 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { FEATURE_KEYS, INSTANCE_KEYS, instanceIds } from '../src/devices.js';
 import { TRIGGERS, WIDGET_KEY } from '../src/hub.js';
-import { BASE, createClock, createDevices, createWorld, idsOf } from './helpers/world.js';
+import {
+  BASE,
+  FakeScrutiny,
+  createClock,
+  createDevices,
+  createWorld,
+  idsOf,
+} from './helpers/world.js';
 
 const transportOf = (world, externalId) =>
   world.fake.transports.findLast((entry) => entry.device_external_id === externalId)?.transport;
@@ -46,7 +56,7 @@ async function captureLogs(t, level, fn) {
   return lines;
 }
 
-test('one device per disk (WWN, else the Scrutiny id) and one for the instance, nothing polled by Gladys', async (t) => {
+test('one device per disk (its Scrutiny id) and one for the instance, nothing polled by Gladys', async (t) => {
   const world = await createWorld();
   t.after(() => world.app.stop());
   const devices = world.fake.discoveredDevices;
@@ -54,10 +64,10 @@ test('one device per disk (WWN, else the Scrutiny id) and one for the instance, 
     devices.map((device) => device.external_id.split(':').slice(2).join(':')),
     [
       'instance:summary',
-      'disk:0x5000cca000000001',
-      'disk:0x5000c50000000002',
+      'disk:id-0f1e2d3c-0000-4000-8000-000000000001',
+      'disk:id-0f1e2d3c-0000-4000-8000-000000000002',
       'disk:id-0f1e2d3c-0000-4000-8000-000000000003',
-      'disk:0x5002538000000004',
+      'disk:id-0f1e2d3c-0000-4000-8000-000000000004',
     ],
   );
   assert.ok(devices.every((device) => device.should_poll === false));
@@ -128,7 +138,8 @@ test('"a disk fails" and "passes again", once each, for any disk, with the faili
         device: idsOf(world, 'nvme0').device,
         disk: 'INTEL SSDPEKNW010T8 (nvme0)',
         model: 'INTEL SSDPEKNW010T8',
-        reason: '',
+        // No failing attribute: the overall S.M.A.R.T. check failed.
+        reason: 'S.M.A.R.T. overall check failed',
         temperature: 36,
       },
     ],
@@ -259,8 +270,8 @@ test('errors by kind: InfluxDB down, a proxy login, no Scrutiny; the settings al
   assert.equal(world.scrutiny.calls[0].headers.authorization, 'Basic bWU6c2VjcmV0');
   for (const [status, message] of [
     [500, 'Scrutiny répond en erreur : vérifiez sa base de données (InfluxDB)'],
-    [401, "une connexion est demandée : vérifiez l'utilisateur et le mot de passe de votre proxy"],
-    [404, 'aucun Scrutiny à cette adresse'],
+    [401, "Une connexion est demandée : vérifiez l'utilisateur et le mot de passe de votre proxy"],
+    [404, 'Aucun Scrutiny à cette adresse'],
   ]) {
     world.scrutiny.statuses = { '/api/summary': status };
     await world.hub.pollNow();
@@ -477,4 +488,73 @@ test('the internal timer reads Scrutiny and publishes the changes, without any p
   }
   assert.ok(world.scrutiny.calls.length > reads);
   assert.equal(world.fake.lastState(idsOf(world, 'nvme0').feature(FEATURE_KEYS.FAILED)), 1);
+});
+
+test('a disk collected more than a week ago keeps its attributes (the whole history is asked)', async (t) => {
+  const scrutiny = new FakeScrutiny();
+  scrutiny.olderThanAWeek.add('sdd');
+  const world = await createWorld({ scrutiny });
+  t.after(() => world.app.stop());
+  const sdd = world.hub.find(idsOf(world, 'sdd').device);
+  assert.deepEqual(sdd.failures, ['UltraDMA CRC Error Count']);
+  assert.equal(sdd.details.reallocated, 0);
+});
+
+test('settings unreadable after a restart: the last ones read are kept, no false failure', async (t) => {
+  const clock = createClock();
+  const first = await createWorld({ clock });
+  first.scrutiny.settings.settings.metrics.status_threshold = 1;
+  await first.hub.pollNow();
+  assert.equal(first.hub.find(idsOf(first, 'sdd').device).health, 'warning');
+  await first.app.stop();
+  first.scrutiny.statuses = { '/api/settings': 502 };
+  const second = await createWorld({ clock, scrutiny: first.scrutiny, dataDir: first.dataDir });
+  t.after(() => second.app.stop());
+  assert.equal(second.hub.find(idsOf(second, 'sdd').device).health, 'warning');
+  assert.equal(second.fake.sceneEvents.length, 0);
+});
+
+test('settings never read (a proxy refuses them): no failure is announced on guessed thresholds', async (t) => {
+  const scrutiny = new FakeScrutiny();
+  scrutiny.statuses = { '/api/settings': 403 };
+  const world = await createWorld({ scrutiny });
+  t.after(() => world.app.stop());
+  world.scrutiny.disk('nvme0').device_status = 2;
+  await collect(world, 'nvme0', 1);
+  assert.equal(world.fake.sceneEvents.length, 0);
+  // Readable again: compared from then on.
+  world.scrutiny.statuses = {};
+  await world.hub.pollNow();
+  world.scrutiny.disk('nvme0').device_status = 0;
+  await collect(world, 'nvme0', 1);
+  world.scrutiny.disk('nvme0').device_status = 1;
+  await collect(world, 'nvme0', 1);
+  assert.equal(events(world, TRIGGERS.FAILED).length, 1);
+});
+
+test('a disk first seen before its first collection: a failing first collection is announced', async (t) => {
+  const scrutiny = new FakeScrutiny();
+  const key = scrutiny.entry('nvme0').key;
+  scrutiny.summary.data.summary[key].smart.collector_date = '0001-01-01T00:00:00Z';
+  const world = await createWorld({ scrutiny });
+  t.after(() => world.app.stop());
+  assert.equal(world.hub.find(idsOf(world, 'nvme0').device).health, 'unknown');
+  world.scrutiny.disk('nvme0').device_status = 1;
+  await collect(world, 'nvme0', 1);
+  assert.equal(events(world, TRIGGERS.FAILED).length, 1);
+  world.scrutiny.disk('nvme0').device_status = 0;
+  await collect(world, 'nvme0', 1);
+  assert.equal(events(world, TRIGGERS.RECOVERED).length, 1);
+});
+
+test('a damaged state file does not stop the readings', async (t) => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'gladys-scrutiny-'));
+  writeFileSync(
+    join(dataDir, 'scrutiny-state.json'),
+    JSON.stringify({ disks: { a: null, b: { health: 'odd' } }, settings: { threshold: 9 } }),
+  );
+  const world = await createWorld({ dataDir });
+  t.after(() => world.app.stop());
+  assert.deepEqual(world.fake.connectionStatus, { connected: true });
+  assert.equal(world.hub.list().length, 4);
 });

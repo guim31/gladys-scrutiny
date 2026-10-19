@@ -57,8 +57,9 @@ viele fehlerhaft sind.
 
 Öffne den Tab **Entdecken** der Integration und füge die zu verfolgenden Festplatten hinzu, dazu
 das Gerät **Scrutiny**, wenn du die Summen willst. In Scrutiny archivierte Festplatten werden nicht
-angeboten. Eine Festplatte wird an ihrer WWN erkannt (an ihrer Scrutiny-ID, wenn sie keine hat, wie
-manche NVMe-Festplatten): An einem anderen Anschluss oder Rechner bleibt sie dasselbe Gerät.
+angeboten. Eine Festplatte wird an ihrer Scrutiny-ID erkannt (aus Modell, Seriennummer und WWN: Eine
+WWN allein ist nicht immer eindeutig): An einem anderen Anschluss oder Rechner bleibt sie dasselbe
+Gerät, ebenso nach einem Update von Scrutiny v0.8 auf v0.9.
 
 ## Die Geräte
 

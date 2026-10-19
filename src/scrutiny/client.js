@@ -92,21 +92,45 @@ export async function httpRequest(url, { method = 'GET', headers = {}, timeoutMs
   return { status: response.status, body };
 }
 
+// Namespace of the Scrutiny ids (collector/pkg/detect/scrutiny_uuid.go).
+const SCRUTINY_NAMESPACE = '3ea22b35-682b-49fb-a655-abffed108e48';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** The UUID v5 Scrutiny gives a disk: model + serial + WWN, in its namespace. */
+export function scrutinyUuid(model, serial, wwn) {
+  const namespace = Buffer.from(SCRUTINY_NAMESPACE.replace(/-/g, ''), 'hex');
+  const hash = createHash('sha1')
+    .update(Buffer.concat([namespace, Buffer.from(`${model}${serial}${wwn}`, 'utf8')]))
+    .digest()
+    .subarray(0, 16);
+  hash[6] = (hash[6] & 0x0f) | 0x50;
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+  const hex = hash.toString('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-');
+}
+
 /**
- * The platform id of a disk: its WWN (stable across Scrutiny versions and
- * reinstallations), lower case; else the Scrutiny id; a hash of it when it
- * holds characters an external id cannot carry. A WWN starts with `0x`,
- * `eui.` or `naa.`, a UUID-based id with `id-`, a hash with `h`: no collision.
+ * The platform id of a disk: its Scrutiny id, `id-<uuid>`. WWNs are not
+ * unique (USB bridges, lazy firmware: Scrutiny says so itself), so since v0.9
+ * Scrutiny keys a disk by a UUID v5 of its model, serial and WWN. A v0.8
+ * server keys it by WWN: the same UUID is computed from the same fields, as
+ * the v0.9 migration does, so the device survives the upgrade.
+ * @param {object} device the `device` of the summary (raw strings)
+ * @param {string} key its key in the summary
  */
-export function platformIdOf(wwn, key) {
-  const lower = typeof wwn === 'string' ? wwn.trim().toLowerCase() : '';
-  if (/^[a-z0-9._-]{4,64}$/.test(lower)) {
-    return lower;
-  }
+export function platformIdOf(device, key) {
   const id = typeof key === 'string' ? key.trim().toLowerCase() : '';
-  return /^[a-z0-9-]{1,64}$/.test(id)
-    ? `id-${id}`
-    : `h${createHash('sha1').update(String(key)).digest('hex').slice(0, 20)}`;
+  if (UUID.test(id)) {
+    return `id-${id}`;
+  }
+  const text = (value) => (typeof value === 'string' ? value : '');
+  return `id-${scrutinyUuid(text(device?.model_name), text(device?.serial_number), text(device?.wwn) || id)}`;
 }
 
 /** A date of the API, null when missing or Go's zero time. */
@@ -138,7 +162,7 @@ export function normalizeDisk(key, raw) {
   const collectedAt = dateOf(smart.collector_date);
   return {
     key: key.trim(),
-    id: platformIdOf(wwn, key),
+    id: platformIdOf(device, key.trim()),
     wwn,
     // As the Scrutiny dashboard can show it: the label set by the user, else
     // the model and the device file.
@@ -163,12 +187,11 @@ export function normalizeDisk(key, raw) {
  */
 export function normalizeDetails(data, metadata = {}) {
   const results = Array.isArray(data?.smart_results) ? data.smart_results : [];
-  const newest = results
-    .filter((result) => result && typeof result === 'object')
-    .reduce(
-      (best, result) => ((dateOf(result.date) ?? 0) > (dateOf(best?.date) ?? 0) ? result : best),
-      null,
-    );
+  const valid = results.filter((result) => result && typeof result === 'object');
+  const newest = valid.reduce(
+    (best, result) => ((dateOf(result.date) ?? 0) > (dateOf(best.date) ?? 0) ? result : best),
+    valid[0] ?? null,
+  );
   const attrs = newest?.attrs && typeof newest.attrs === 'object' ? newest.attrs : {};
   const attributes = Object.entries(attrs)
     .filter(([, attr]) => attr && typeof attr === 'object')
@@ -178,7 +201,8 @@ export function normalizeDetails(data, metadata = {}) {
       critical: metadata?.[id]?.critical === true,
       status: Number.isInteger(attr.status) ? attr.status : 0,
     }));
-  const raw = (id) => (id in attrs ? count(attrs[id].raw_value) : null);
+  const raw = (id) =>
+    attrs[id] && typeof attrs[id] === 'object' ? count(attrs[id].raw_value) : null;
   const ata = (newest?.device_protocol ?? 'ATA') === 'ATA';
   return {
     attributes,
@@ -281,10 +305,16 @@ export class ScrutinyClient {
    * @throws {ScrutinyError}
    */
   async details(key) {
-    const data = await this.json(
-      `/api/device/${encodeURIComponent(key)}/details?duration_key=week`,
-    );
-    return normalizeDetails(data.data, data.metadata);
+    const path = `/api/device/${encodeURIComponent(key)}/details`;
+    const week = await this.json(`${path}?duration_key=week`);
+    const details = normalizeDetails(week.data, week.metadata);
+    if (details.attributes.length > 0) {
+      return details;
+    }
+    // Nothing collected in the last 7 days (a disk collected weekly, a stale
+    // one): the newest result is older, in the whole history.
+    const forever = await this.json(`${path}?duration_key=forever`);
+    return normalizeDetails(forever.data, forever.metadata);
   }
 
   /**

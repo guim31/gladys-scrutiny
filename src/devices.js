@@ -2,7 +2,7 @@
 // Gladys devices, proposed in the Discovery tab (the user adds the ones to
 // follow, nothing is created on their behalf):
 //
-//   - one device per disk, identified by its WWN (see platformIdOf in
+//   - one device per disk, identified by its Scrutiny id (see platformIdOf in
 //     src/scrutiny/client.js):
 //       failed               input/binary          1 failed, 0 passed — as the
 //                                                  Scrutiny dashboard decides it
@@ -94,7 +94,7 @@ export const NAMES = {
     [FEATURE_KEYS.POWER_ON_HOURS]: 'Horas de funcionamiento',
     [FEATURE_KEYS.REALLOCATED]: 'Sectores reasignados',
     [FEATURE_KEYS.PENDING]: 'Sectores pendientes',
-    [FEATURE_KEYS.COLLECTION_AGE]: 'Desde la última recogida',
+    [FEATURE_KEYS.COLLECTION_AGE]: 'Desde la última recopilación',
     [INSTANCE_KEYS.FAILED]: 'Discos con fallo',
     [INSTANCE_KEYS.WARNING]: 'Discos con advertencia',
     [INSTANCE_KEYS.TOTAL]: 'Discos en total',

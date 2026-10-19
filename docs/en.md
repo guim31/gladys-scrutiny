@@ -59,9 +59,10 @@ and how many failed.
 
 Open the **Discover** tab of the integration and add the disks to follow, and
 the **Scrutiny** device if you want the totals. Archived disks of Scrutiny are
-not proposed. A disk is identified by its WWN (its Scrutiny id when it has
-none, as some NVMe disks): moving it to another port or machine keeps the same
-device.
+not proposed. A disk is identified by its Scrutiny id (built from its model,
+serial number and WWN: a WWN alone is not always unique): moving it to another
+port or machine keeps the same device, and so does an upgrade from Scrutiny
+v0.8 to v0.9.
 
 ## The devices
 

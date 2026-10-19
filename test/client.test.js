@@ -6,6 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { normalizeConfig, parseServerUrl } from '../src/config.js';
 import {
   ERROR_KINDS,
@@ -13,6 +14,7 @@ import {
   normalizeDetails,
   normalizeDisk,
   platformIdOf,
+  scrutinyUuid,
 } from '../src/scrutiny/client.js';
 import { BASE, FakeScrutiny } from './helpers/fakeScrutiny.js';
 
@@ -31,14 +33,23 @@ test('the address: bare host, copied from the browser, behind a sub-path; creden
   assert.equal(config.language, 'fr');
 });
 
-test('platform ids: the WWN, else the Scrutiny id, else a hash; never one for another', () => {
-  assert.equal(platformIdOf('0x5000CCA000000001', 'x'), '0x5000cca000000001');
-  assert.equal(platformIdOf('eui.0025385b71b07e2f', 'x'), 'eui.0025385b71b07e2f');
+test('platform ids: the Scrutiny id, computed as Scrutiny does for a v0.8 key (a WWN)', () => {
   assert.equal(
-    platformIdOf('', '0F1E2D3C-0000-4000-8000-000000000003'),
+    platformIdOf({}, '0F1E2D3C-0000-4000-8000-000000000003'),
     'id-0f1e2d3c-0000-4000-8000-000000000003',
   );
-  assert.match(platformIdOf('', 'disk with spaces'), /^h[0-9a-f]{20}$/);
+  // The vector of Scrutiny's own tests (web/testdata/register-devices-req.json).
+  const device = {
+    wwn: '0x5002538e40a22954',
+    model_name: 'Samsung_SSD_860_EVO_500GB',
+    serial_number: 'S3YZNB0KBXXXXXX',
+  };
+  assert.equal(platformIdOf(device, device.wwn), 'id-ecfaaf20-d1f6-558b-b33a-3e8db19a6c2c');
+  // Two disks behind a USB bridge sharing a WWN stay two devices.
+  assert.notEqual(
+    platformIdOf({ ...device, serial_number: 'OTHER' }, device.wwn),
+    platformIdOf(device, device.wwn),
+  );
 });
 
 test('a disk never collected (Go zero time) has no health data; a v0.8 summary keyed by WWN works', () => {
@@ -99,4 +110,23 @@ test('errors by kind: refused, certificate, redirect, not Scrutiny, not JSON', a
     await kind({ status: 200, body: '{"success":true,"data":{}}' }),
     ERROR_KINDS.NOT_SCRUTINY,
   );
+});
+
+test('the real v0.8.1 answer (disks keyed by WWN) gives the ids the v0.9 migration gives', async () => {
+  const body = readFileSync(
+    new URL('./fixtures/scrutiny/summary-v0.8.1.json', import.meta.url),
+    'utf8',
+  );
+  const disks = await new ScrutinyClient({
+    url: BASE,
+    request: async () => ({ status: 200, body }),
+  }).summary();
+  for (const disk of disks) {
+    assert.equal(disk.key, disk.wwn, 'v0.8 reads the details with the WWN');
+    assert.equal(disk.id, `id-${scrutinyUuid(disk.model, disk.serial, disk.wwn)}`);
+  }
+  assert.deepEqual(disks.map((disk) => [disk.deviceName, disk.deviceStatus]).sort(), [
+    ['sda', 0],
+    ['sdb', 3],
+  ]);
 });

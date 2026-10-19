@@ -11,7 +11,7 @@ Gladys lee el servidor web de Scrutiny: nunca toca sus discos. Todo se queda en 
 
 Probada con un Scrutiny real en Docker (v0.9.5, imagen omnibus), alimentado con salidas `smartctl`
 reales de la batería de pruebas de Scrutiny: discos sanos, con advertencia, con fallo S.M.A.R.T. y
-de Scrutiny, un disco NVMe, una recogida demasiado antigua. Aún no en una instalación real: sus
+de Scrutiny, un disco NVMe, una recopilación demasiado antigua. Aún no en una instalación real: sus
 comentarios son bienvenidos en [las issues](https://github.com/guim31/gladys-scrutiny/issues).
 
 ## Lo que necesita
@@ -41,9 +41,9 @@ En Gladys, abra **Integraciones → Scrutiny → Configuración**:
   los pide.
 - **Intervalo de actualización**: con qué frecuencia se lee Scrutiny, 15 minutos por defecto. Una
   petición para la lista de discos y otra para los ajustes cada vez; los atributos de un disco solo
-  se vuelven a leer tras una nueva recogida.
-- **Recogida demasiado antigua tras**: tras cuánto tiempo sin recogida nueva un disco activa «Disco
-  ya no recogido» (36 horas por defecto, para un recolector diario).
+  se vuelven a leer tras una nueva recopilación.
+- **Recopilación demasiado antigua tras**: tras cuánto tiempo sin recopilación nueva un disco activa «Disco
+  ya no recopilado» (36 horas por defecto, para un recolector diario).
 - **Idioma de los nombres**: el idioma de los nombres de funciones (fijados al añadir un
   dispositivo) y de los textos enviados a las escenas.
 
@@ -54,8 +54,9 @@ fallo.
 
 Abra la pestaña **Descubrir** de la integración y añada los discos que desea seguir, y el
 dispositivo **Scrutiny** si quiere los totales. Los discos archivados en Scrutiny no se proponen. Un
-disco se identifica por su WWN (por su identificador de Scrutiny cuando no tiene, como algunos
-discos NVMe): cambiarlo de puerto o de máquina conserva el mismo dispositivo.
+disco se identifica por su identificador de Scrutiny (calculado a partir de su modelo, su número de
+serie y su WWN: un WWN solo no siempre es único): cambiarlo de puerto o de máquina conserva el mismo
+dispositivo, y también una actualización de Scrutiny v0.8 a v0.9.
 
 ## Los dispositivos
 
@@ -65,11 +66,11 @@ Cada disco tiene estas funciones:
   «umbral de estado» de los ajustes de Scrutiny: S.M.A.R.T., Scrutiny o ambos). La condición que
   usar en las escenas.
 - **Salud**: OK, Advertencia (el disco pasa pero un atributo es dudoso) o Con fallo, como texto.
-- **Temperatura**: en la última recogida, en °C.
+- **Temperatura**: en la última recopilación, en °C.
 - **Horas de funcionamiento**: tal como las da el disco.
 - **Sectores reasignados** y **Sectores pendientes**: atributos S.M.A.R.T. 5 y 197, solo en los
   discos que los dan (SATA). Un contador que sube es la primera señal de un disco que se muere.
-- **Desde la última recogida**: horas desde el último envío del recolector para el disco.
+- **Desde la última recopilación**: horas desde el último envío del recolector para el disco.
 
 El dispositivo **Scrutiny** cuenta los **Discos con fallo**, los **Discos con advertencia** y los
 **Discos en total**.
@@ -78,21 +79,21 @@ El dispositivo **Scrutiny** cuenta los **Discos con fallo**, los **Discos con ad
 
 El widget **Discos de Scrutiny** muestra tres mosaicos (con fallo, advertencias, la temperatura más
 alta), y luego una fila por disco: primero los que tienen un fallo, luego las advertencias, los
-discos ya no recogidos y los sanos, diez filas como máximo. Elija discos en sus ajustes para mostrar
+discos ya no recopilados y los sanos, diez filas como máximo. Elija discos en sus ajustes para mostrar
 solo esos. **Actualizar** vuelve a leer Scrutiny.
 
 ## Escenas
 
 ### Desencadenantes
 
-- **Un disco falla**: Scrutiny marca un disco con fallo tras una recogida. Variables: el nombre del
+- **Un disco falla**: Scrutiny marca un disco con fallo tras una recopilación. Variables: el nombre del
   disco, su modelo, los atributos con fallo y su temperatura.
-- **Un disco vuelve a estar bien**: un disco con fallo vuelve a estar bien en una nueva recogida, o
+- **Un disco vuelve a estar bien**: un disco con fallo vuelve a estar bien en una nueva recopilación, o
   tras un cambio del umbral de Scrutiny. Variables: el nombre del disco, su modelo y cuántas horas
   tuvo el fallo.
-- **Disco ya no recogido**: ninguna recogida nueva de un disco desde el plazo configurado
+- **Disco ya no recopilado**: ninguna recopilación nueva de un disco desde el plazo configurado
   (recolector parado, disco desaparecido). Un evento por disco. Variables: el nombre del disco, su
-  modelo y las horas desde su última recogida.
+  modelo y las horas desde su última recopilación.
 
 Cada desencadenante puede limitarse a algunos discos. Un disco visto por primera vez no activa nada:
 un disco con fallo desde hace meses no es noticia. La integración guarda el último estado de cada
@@ -102,10 +103,10 @@ una vez.
 ### Acciones
 
 - **Estado de un disco**: lee un disco para las acciones siguientes: con fallo o no, su salud,
-  nombre, modelo, temperatura, horas de funcionamiento, horas desde la recogida, los atributos
-  afectados y una frase lista como «Samsung SSD 840 (sdd): Con fallo, 33 °C, recogido hace 5 días.
+  nombre, modelo, temperatura, horas de funcionamiento, horas desde la recopilación, los atributos
+  afectados y una frase lista como «Samsung SSD 840 (sdd): Con fallo, 33 °C, recopilado hace 5 días.
   UltraDMA CRC Error Count.»
-- **Contar los discos con fallo**: cuenta los discos con fallo, con advertencia, ya no recogidos y
+- **Contar los discos con fallo**: cuenta los discos con fallo, con advertencia, ya no recopilados y
   en total, y nombra los que fallan, para un informe.
 
 Ambas vuelven a leer Scrutiny cuando la última lectura tiene más de un minuto.
@@ -116,7 +117,7 @@ Ambas vuelven a leer Scrutiny cuando la última lectura tiene más de un minuto.
   lámpara en rojo.
 - Cada domingo a las 10:00 → **Contar los discos con fallo** → si el número es mayor que 0, enviar
   «{nombres} con fallo, {advertencias} disco(s) con advertencia».
-- **Disco ya no recogido** → avisar «El recolector de Scrutiny de {disco} se paró hace {horas}
+- **Disco ya no recopilado** → avisar «El recolector de Scrutiny de {disco} se paró hace {horas}
   horas»: un NAS de copias que no se despertó, un contenedor de recolector caído.
 
 ## Solución de problemas
@@ -132,15 +133,15 @@ Ambas vuelven a leer Scrutiny cuando la última lectura tiene más de un minuto.
   su red.
 - **Ningún disco**: ningún recolector ha enviado datos todavía; láncelo una vez
   (`docker exec scrutiny scrutiny-collector-metrics run` con la imagen omnibus).
-- **Un disco se queda en «Aún sin recoger»**: está registrado pero su recolector no pudo leer sus
+- **Un disco se queda en «Aún sin recopilar»**: está registrado pero su recolector no pudo leer sus
   datos S.M.A.R.T. (caja USB, controladora RAID): consulte los registros del recolector.
 - **La salud difiere del panel de Scrutiny**: recargue el panel; la integración lee el mismo umbral
   de estado, con el intervalo elegido.
 
 ## Límites
 
-- Los datos son los de la última recogida: con el recolector diario por defecto, un disco que falla
-  a mediodía aparece en la siguiente recogida.
+- Los datos son los de la última recopilación: con el recolector diario por defecto, un disco que falla
+  a mediodía aparece en la siguiente recopilación.
 - No se leen el historial de Scrutiny, sus notificaciones ni los resultados de autopruebas; Gladys
   guarda el historial de cada función.
 - Los contadores de sectores solo existen para los discos SATA; los discos NVMe y SAS muestran su

@@ -35,7 +35,7 @@ configuration (`GET` requests, on your local network); it never contacts
 anything else and never touches the disks. The optional proxy user and
 password are stored by Gladys and sent only to that address, as basic
 authentication; redirects are not followed. The volume `/data` only holds
-`scrutiny-state.json`: the last health of each disk (by WWN) and whether its
+`scrutiny-state.json`: the last health of each disk (by Scrutiny id) and whether its
 collection was stale, to announce each change once.
 
 Out of scope: Gladys Assistant itself (see its

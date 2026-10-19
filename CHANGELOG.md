@@ -13,7 +13,7 @@ the notes of the version's GitHub Release.
 ### Added
 
 - First version: the disks of a Scrutiny web server (v0.8 or v0.9) in Gladys,
-  one device per disk, identified by its WWN: failed or not, health (OK,
+  one device per disk, identified by its Scrutiny id (model, serial, WWN): failed or not, health (OK,
   warning, failed, as the Scrutiny dashboard decides it), temperature,
   power-on hours, reallocated and pending sectors (SATA), hours since the last
   collection; and a Scrutiny device with the disks failed, with a warning and

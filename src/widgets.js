@@ -39,7 +39,7 @@ export const TEXT = {
     es: 'Ningún disco que mostrar: compruebe los discos elegidos o que un recolector de Scrutiny funcione.',
   },
   failed: { en: 'Failed', fr: 'En échec', de: 'Fehlerhaft', es: 'Con fallo' },
-  warning: { en: 'Warnings', fr: 'Avertis.', de: 'Warnungen', es: 'Advertencias' },
+  warning: { en: 'Warnings', fr: 'Avertissements', de: 'Warnungen', es: 'Advertencias' },
   hottest: { en: 'Hottest', fr: 'Le plus chaud', de: 'Am heißesten', es: 'Más caliente' },
   more: { en: 'Others', fr: 'Autres', de: 'Weitere', es: 'Otros' },
   refresh: { en: 'Refresh', fr: 'Actualiser', de: 'Aktualisieren', es: 'Actualizar' },
@@ -116,7 +116,11 @@ async function get(hub, { settings, language = 'en' }) {
   const now = hub.now();
   const failed = disks.filter((disk) => disk.health === 'failed').length;
   const warning = disks.filter((disk) => disk.health === 'warning').length;
-  const temperatures = disks.map((disk) => disk.temperature).filter((t) => t !== null);
+  // A stale disk's temperature may be weeks old: not the hottest now.
+  const temperatures = disks
+    .filter((disk) => !disk.stale)
+    .map((disk) => disk.temperature)
+    .filter((t) => t !== null);
   const components = [
     {
       type: 'value',

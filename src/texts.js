@@ -38,28 +38,28 @@ export const ERROR_TEXT = {
     es: 'Scrutiny no responde',
   },
   [ERROR_KINDS.TLS]: {
-    en: 'certificate refused: use an http:// address or a trusted certificate',
-    fr: 'certificat refusé : utilisez une adresse http:// ou un certificat reconnu',
+    en: 'Certificate refused: use an http:// address or a trusted certificate',
+    fr: 'Certificat refusé : utilisez une adresse http:// ou un certificat reconnu',
     de: 'Zertifikat abgelehnt: Nutze eine http://-Adresse oder ein vertrauenswürdiges Zertifikat',
-    es: 'certificado rechazado: use una dirección http:// o un certificado reconocido',
+    es: 'Certificado rechazado: use una dirección http:// o un certificado reconocido',
   },
   [ERROR_KINDS.AUTH]: {
-    en: 'a login is asked: check the user and password of your proxy',
-    fr: "une connexion est demandée : vérifiez l'utilisateur et le mot de passe de votre proxy",
-    de: 'eine Anmeldung wird verlangt: Prüfe Benutzer und Passwort deines Proxys',
-    es: 'se pide iniciar sesión: compruebe el usuario y la contraseña de su proxy',
+    en: 'A login is asked: check the user and password of your proxy',
+    fr: "Une connexion est demandée : vérifiez l'utilisateur et le mot de passe de votre proxy",
+    de: 'Eine Anmeldung wird verlangt: Prüfe Benutzer und Passwort deines Proxys',
+    es: 'Se pide iniciar sesión: compruebe el usuario y la contraseña de su proxy',
   },
   [ERROR_KINDS.NOT_SCRUTINY]: {
-    en: 'no Scrutiny at this address',
-    fr: 'aucun Scrutiny à cette adresse',
-    de: 'kein Scrutiny unter dieser Adresse',
-    es: 'no hay ningún Scrutiny en esta dirección',
+    en: 'No Scrutiny at this address',
+    fr: 'Aucun Scrutiny à cette adresse',
+    de: 'Kein Scrutiny unter dieser Adresse',
+    es: 'No hay ningún Scrutiny en esta dirección',
   },
   [ERROR_KINDS.REDIRECT]: {
-    en: 'the address redirects: enter the https:// address',
-    fr: "l'adresse redirige : saisissez l'adresse en https://",
-    de: 'die Adresse leitet um: Gib die https://-Adresse ein',
-    es: 'la dirección redirige: introduzca la dirección https://',
+    en: 'The address redirects: enter the https:// address',
+    fr: "L'adresse redirige : saisissez l'adresse en https://",
+    de: 'Die Adresse leitet um: Gib die https://-Adresse ein',
+    es: 'La dirección redirige: introduzca la dirección https://',
   },
   [ERROR_KINDS.SERVER]: {
     en: 'Scrutiny answers with an error: check its database (InfluxDB)',
@@ -68,10 +68,10 @@ export const ERROR_TEXT = {
     es: 'Scrutiny responde con un error: compruebe su base de datos (InfluxDB)',
   },
   [ERROR_KINDS.HTTP]: {
-    en: 'unexpected answer, see the logs',
-    fr: 'réponse inattendue, voir les logs',
-    de: 'unerwartete Antwort, sieh in den Protokollen nach',
-    es: 'respuesta inesperada, consulte los registros',
+    en: 'Unexpected answer, see the logs',
+    fr: 'Réponse inattendue, voir les logs',
+    de: 'Unerwartete Antwort, sieh in den Protokollen nach',
+    es: 'Respuesta inesperada, consulte los registros',
   },
 };
 
@@ -85,7 +85,23 @@ export const HEALTH_TEXT = {
     en: 'Not collected yet',
     fr: 'Pas encore collecté',
     de: 'Noch nicht erfasst',
-    es: 'Aún sin recoger',
+    es: 'Aún sin recopilar',
+  },
+};
+
+// Why a disk failed when no attribute does (the `reason` of "A disk fails").
+export const REASON_TEXT = {
+  smart: {
+    en: 'S.M.A.R.T. overall check failed',
+    fr: 'test global S.M.A.R.T. en échec',
+    de: 'S.M.A.R.T.-Gesamtprüfung fehlgeschlagen',
+    es: 'prueba global S.M.A.R.T. fallida',
+  },
+  scrutiny: {
+    en: 'Scrutiny thresholds exceeded',
+    fr: 'seuils de Scrutiny dépassés',
+    de: 'Scrutiny-Schwellen überschritten',
+    es: 'umbrales de Scrutiny superados',
   },
 };
 
@@ -94,7 +110,7 @@ export const STALE_TEXT = {
   en: { since: (age) => `collected ${age} ago` },
   fr: { since: (age) => `collecté il y a ${age}` },
   de: { since: (age) => `vor ${age} erfasst` },
-  es: { since: (age) => `recogido hace ${age}` },
+  es: { since: (age) => `recopilado hace ${age}` },
 };
 
 // A duration in hours, rounded to days past two days.

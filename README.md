@@ -5,7 +5,7 @@ that brings the disk health dashboard of
 [Scrutiny](https://github.com/AnalogJ/scrutiny) into Gladys: the S.M.A.R.T.
 state of your hard drives and SSDs, as Scrutiny judges it.
 
-- **One device per disk** (identified by its WWN): failed or not, health (OK,
+- **One device per disk** (identified by its Scrutiny id: model, serial, WWN): failed or not, health (OK,
   warning, failed), temperature, power-on hours, reallocated and pending
   sectors (SATA), hours since the last collection.
 - **One instance device**: disks failed, with a warning, in total.
