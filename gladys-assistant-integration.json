@@ -1,177 +1,740 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "Scrutiny",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Disk health from Scrutiny (S.M.A.R.T.) in Gladys: state, temperature, and scenes when a disk fails.",
+    "fr": "La santé de vos disques (S.M.A.R.T.) via Scrutiny : état, température, scènes si un disque lâche.",
+    "de": "Festplattenzustand aus Scrutiny (S.M.A.R.T.) in Gladys: Status, Temperatur, Szenen bei Ausfall.",
+    "es": "La salud de sus discos (S.M.A.R.T.) desde Scrutiny: estado, temperatura y escenas si uno falla."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-scrutiny:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-scrutiny/main/cover.png",
+  "categories": ["network"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your Scrutiny",
+        "fr": "Votre Scrutiny",
+        "de": "Dein Scrutiny",
+        "es": "Su Scrutiny"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Enter the address of the Scrutiny web interface. Then add the disks to follow from the Discover tab: Gladys reads Scrutiny, the Scrutiny collector reads the disks.",
+        "fr": "Saisissez l'adresse de l'interface web de Scrutiny. Ajoutez ensuite les disques à suivre depuis l'onglet Découverte : Gladys lit Scrutiny, c'est le collecteur Scrutiny qui lit les disques.",
+        "de": "Gib die Adresse der Weboberfläche von Scrutiny ein. Lege dann die zu verfolgenden Festplatten im Tab „Entdecken“ an: Gladys liest Scrutiny, der Scrutiny-Collector liest die Festplatten.",
+        "es": "Introduzca la dirección de la interfaz web de Scrutiny. Después añada los discos que desea seguir desde la pestaña Descubrir: Gladys lee Scrutiny, el recolector de Scrutiny lee los discos."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/guim31/gladys-scrutiny/blob/main/docs/en.md",
+          "label": {
+            "en": "Setup guide",
+            "fr": "Guide d'installation",
+            "de": "Einrichtungsanleitung",
+            "es": "Guía de instalación"
+          }
+        },
+        {
+          "url": "https://github.com/AnalogJ/scrutiny#getting-started",
+          "label": {
+            "en": "Install Scrutiny",
+            "fr": "Installer Scrutiny",
+            "de": "Scrutiny installieren",
+            "es": "Instalar Scrutiny"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "url",
+      "type": "string",
+      "label": {
+        "en": "Scrutiny address",
+        "fr": "Adresse de Scrutiny",
+        "de": "Scrutiny-Adresse",
+        "es": "Dirección de Scrutiny"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "description": {
+        "en": "Address and port of the Scrutiny web interface (8080 by default).",
+        "fr": "Adresse et port de l'interface web de Scrutiny (8080 par défaut).",
+        "de": "Adresse und Port der Weboberfläche von Scrutiny (standardmäßig 8080).",
+        "es": "Dirección y puerto de la interfaz web de Scrutiny (8080 por defecto)."
+      },
+      "placeholder": {
+        "en": "e.g. http://192.168.1.2:8080",
+        "fr": "ex. http://192.168.1.2:8080",
+        "de": "z. B. http://192.168.1.2:8080",
+        "es": "p. ej. http://192.168.1.2:8080"
+      },
+      "required": true
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "username",
+      "type": "string",
+      "label": {
+        "en": "Proxy user (optional)",
+        "fr": "Utilisateur du proxy (facultatif)",
+        "de": "Proxy-Benutzer (optional)",
+        "es": "Usuario del proxy (opcional)"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "Only if a reverse proxy asks for a login in front of Scrutiny (basic authentication).",
+        "fr": "Seulement si un proxy inverse demande une connexion devant Scrutiny (authentification basique).",
+        "de": "Nur wenn ein Reverse-Proxy vor Scrutiny eine Anmeldung verlangt (Basic-Authentifizierung).",
+        "es": "Solo si un proxy inverso pide iniciar sesión delante de Scrutiny (autenticación básica)."
+      },
+      "required": false
     },
     {
-      "key": "unit",
+      "key": "password",
+      "type": "secret",
+      "label": {
+        "en": "Proxy password (optional)",
+        "fr": "Mot de passe du proxy (facultatif)",
+        "de": "Proxy-Passwort (optional)",
+        "es": "Contraseña del proxy (opcional)"
+      },
+      "description": {
+        "en": "The password of this user. Scrutiny itself has no login.",
+        "fr": "Le mot de passe de cet utilisateur. Scrutiny lui-même n'a pas de connexion.",
+        "de": "Das Passwort dieses Benutzers. Scrutiny selbst hat keine Anmeldung.",
+        "es": "La contraseña de este usuario. Scrutiny en sí no tiene inicio de sesión."
+      },
+      "required": false
+    },
+    {
+      "key": "options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      }
+    },
+    {
+      "key": "poll_interval",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often Scrutiny is read. Its collector reads the disks once a day by default.",
+        "fr": "À quelle fréquence Scrutiny est lu. Son collecteur lit les disques une fois par jour par défaut.",
+        "de": "Wie oft Scrutiny gelesen wird. Sein Collector liest die Festplatten standardmäßig einmal am Tag.",
+        "es": "Con qué frecuencia se lee Scrutiny. Su recolector lee los discos una vez al día por defecto."
+      },
+      "default": "15",
+      "required": true,
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "5",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        },
+        {
+          "value": "15",
+          "label": {
+            "en": "15 minutes",
+            "fr": "15 minutes",
+            "de": "15 Minuten",
+            "es": "15 minutos"
+          }
+        },
+        {
+          "value": "30",
+          "label": {
+            "en": "30 minutes",
+            "fr": "30 minutes",
+            "de": "30 Minuten",
+            "es": "30 minutos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 hour",
+            "fr": "1 heure",
+            "de": "1 Stunde",
+            "es": "1 hora"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+      "key": "stale_hours",
+      "type": "select",
+      "label": {
+        "en": "Collection too old after",
+        "fr": "Collecte trop ancienne après",
+        "de": "Erfassung zu alt nach",
+        "es": "Recogida demasiado antigua tras"
       },
-      "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "description": {
+        "en": "A disk not collected for this long fires \"Disk no longer collected\": a stopped collector, a disk gone.",
+        "fr": "Un disque non collecté depuis ce délai déclenche « Disque plus collecté » : collecteur arrêté, disque disparu.",
+        "de": "Eine so lange nicht erfasste Festplatte löst „Festplatte nicht mehr erfasst“ aus: Collector gestoppt, Festplatte weg.",
+        "es": "Un disco sin recoger durante este tiempo activa «Disco ya no recogido»: recolector parado, disco desaparecido."
+      },
+      "default": "36",
+      "required": true,
+      "options": [
+        {
+          "value": "26",
+          "label": {
+            "en": "26 hours",
+            "fr": "26 heures",
+            "de": "26 Stunden",
+            "es": "26 horas"
+          }
+        },
+        {
+          "value": "36",
+          "label": {
+            "en": "36 hours",
+            "fr": "36 heures",
+            "de": "36 Stunden",
+            "es": "36 horas"
+          }
+        },
+        {
+          "value": "48",
+          "label": {
+            "en": "2 days",
+            "fr": "2 jours",
+            "de": "2 Tage",
+            "es": "2 días"
+          }
+        },
+        {
+          "value": "72",
+          "label": {
+            "en": "3 days",
+            "fr": "3 jours",
+            "de": "3 Tage",
+            "es": "3 días"
+          }
+        },
+        {
+          "value": "168",
+          "label": {
+            "en": "1 week",
+            "fr": "1 semaine",
+            "de": "1 Woche",
+            "es": "1 semana"
+          }
+        }
+      ]
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the names",
+        "fr": "Langue des noms",
+        "de": "Sprache der Namen",
+        "es": "Idioma de los nombres"
+      },
+      "description": {
+        "en": "Language of the feature names (set when a device is added) and of the texts sent to scenes.",
+        "fr": "Langue des noms de fonctionnalités (figés à l'ajout d'un appareil) et des textes envoyés aux scènes.",
+        "de": "Sprache der Funktionsnamen (beim Hinzufügen eines Geräts festgelegt) und der Texte für Szenen.",
+        "es": "Idioma de los nombres de funciones (fijados al añadir un dispositivo) y de los textos enviados a las escenas."
+      },
+      "default": "fr",
+      "required": true,
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "description": {
+        "en": "Reads Scrutiny now and tells how many disks it follows, and how many failed.",
+        "fr": "Lit Scrutiny tout de suite et indique combien de disques il suit, et combien sont en échec.",
+        "de": "Liest Scrutiny sofort und zeigt, wie viele Festplatten es verfolgt und wie viele fehlerhaft sind.",
+        "es": "Lee Scrutiny ahora e indica cuántos discos sigue y cuántos tienen un fallo."
+      },
+      "timeout_seconds": 60
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "disk_failed",
+      "label": {
+        "en": "A disk fails",
+        "fr": "Un disque passe en échec",
+        "de": "Eine Festplatte fällt aus",
+        "es": "Un disco falla"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "Scrutiny marks a disk as failed after a collection (S.M.A.R.T. or its own thresholds, as set in Scrutiny).",
+        "fr": "Scrutiny marque un disque en échec après une collecte (S.M.A.R.T. ou ses propres seuils, selon ses réglages).",
+        "de": "Scrutiny markiert eine Festplatte nach einer Erfassung als fehlerhaft (S.M.A.R.T. oder eigene Schwellen, wie eingestellt).",
+        "es": "Scrutiny marca un disco con fallo tras una recogida (S.M.A.R.T. o sus propios umbrales, según su configuración)."
       },
       "fields": [
         {
           "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
           "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "source": "devices",
+          "label": {
+            "en": "Disks (empty: any)",
+            "fr": "Disques (vide : tous)",
+            "de": "Festplatten (leer: alle)",
+            "es": "Discos (vacío: cualquiera)"
+          }
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "disk",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Disk name",
+            "fr": "Nom du disque",
+            "de": "Name der Festplatte",
+            "es": "Nombre del disco"
+          }
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model",
+            "fr": "Modèle",
+            "de": "Modell",
+            "es": "Modelo"
+          }
+        },
+        {
+          "key": "reason",
+          "type": "string",
+          "label": {
+            "en": "Failing attributes",
+            "fr": "Attributs en échec",
+            "de": "Fehlerhafte Attribute",
+            "es": "Atributos con fallo"
+          }
+        },
+        {
+          "key": "temperature",
+          "type": "number",
+          "label": {
+            "en": "Temperature (°C)",
+            "fr": "Température (°C)",
+            "de": "Temperatur (°C)",
+            "es": "Temperatura (°C)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "disk_recovered",
+      "label": {
+        "en": "A disk passes again",
+        "fr": "Un disque redevient OK",
+        "de": "Eine Festplatte ist wieder OK",
+        "es": "Un disco vuelve a estar bien"
+      },
+      "description": {
+        "en": "A failed disk passes again at a new collection, or after a change of the Scrutiny status threshold.",
+        "fr": "Un disque en échec repasse au vert à une nouvelle collecte, ou après un changement du seuil de Scrutiny.",
+        "de": "Eine fehlerhafte Festplatte ist bei einer neuen Erfassung wieder OK, oder nach einer Änderung der Scrutiny-Schwelle.",
+        "es": "Un disco con fallo vuelve a estar bien en una nueva recogida, o tras un cambio del umbral de Scrutiny."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "multi_select",
+          "source": "devices",
+          "label": {
+            "en": "Disks (empty: any)",
+            "fr": "Disques (vide : tous)",
+            "de": "Festplatten (leer: alle)",
+            "es": "Discos (vacío: cualquiera)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "disk",
+          "type": "string",
+          "label": {
+            "en": "Disk name",
+            "fr": "Nom du disque",
+            "de": "Name der Festplatte",
+            "es": "Nombre del disco"
+          }
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model",
+            "fr": "Modèle",
+            "de": "Modell",
+            "es": "Modelo"
+          }
+        },
+        {
+          "key": "failed_hours",
+          "type": "number",
+          "label": {
+            "en": "Failed for (hours)",
+            "fr": "En échec pendant (heures)",
+            "de": "Fehlerhaft seit (Stunden)",
+            "es": "Con fallo durante (horas)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "collection_stale",
+      "label": {
+        "en": "Disk no longer collected",
+        "fr": "Disque plus collecté",
+        "de": "Festplatte nicht mehr erfasst",
+        "es": "Disco ya no recogido"
+      },
+      "description": {
+        "en": "No new collection for a disk for the delay of the configuration: the collector stopped, or the disk is gone.",
+        "fr": "Plus de collecte pour un disque depuis le délai de la configuration : collecteur arrêté, ou disque disparu.",
+        "de": "Keine neue Erfassung einer Festplatte seit der eingestellten Frist: Collector gestoppt oder Festplatte weg.",
+        "es": "Ninguna recogida nueva de un disco desde el plazo configurado: recolector parado o disco desaparecido."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "multi_select",
+          "source": "devices",
+          "label": {
+            "en": "Disks (empty: any)",
+            "fr": "Disques (vide : tous)",
+            "de": "Festplatten (leer: alle)",
+            "es": "Discos (vacío: cualquiera)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "disk",
+          "type": "string",
+          "label": {
+            "en": "Disk name",
+            "fr": "Nom du disque",
+            "de": "Name der Festplatte",
+            "es": "Nombre del disco"
+          }
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model",
+            "fr": "Modèle",
+            "de": "Modell",
+            "es": "Modelo"
+          }
+        },
+        {
+          "key": "hours",
+          "type": "number",
+          "label": {
+            "en": "Hours since the collection",
+            "fr": "Heures depuis la collecte",
+            "de": "Stunden seit der Erfassung",
+            "es": "Horas desde la recogida"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "get_disk_status",
+      "label": {
+        "en": "State of a disk",
+        "fr": "État d'un disque",
+        "de": "Zustand einer Festplatte",
+        "es": "Estado de un disco"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Reads the state of a disk for the next actions: health, temperature, hours, failing attributes, and a ready-made sentence.",
+        "fr": "Lit l'état d'un disque pour les actions suivantes : santé, température, heures, attributs en cause, et une phrase toute prête.",
+        "de": "Liest den Zustand einer Festplatte für die nächsten Aktionen: Zustand, Temperatur, Stunden, betroffene Attribute und ein fertiger Satz.",
+        "es": "Lee el estado de un disco para las acciones siguientes: salud, temperatura, horas, atributos afectados y una frase lista."
+      },
+      "timeout_seconds": 60,
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "label": {
+            "en": "Disk",
+            "fr": "Disque",
+            "de": "Festplatte",
+            "es": "Disco"
+          },
           "required": true
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
+          "key": "failed",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Failed",
+            "fr": "En échec",
+            "de": "Fehlerhaft",
+            "es": "Con fallo"
+          }
+        },
+        {
+          "key": "health",
+          "type": "string",
+          "label": {
+            "en": "Health",
+            "fr": "Santé",
+            "de": "Zustand",
+            "es": "Salud"
+          }
+        },
+        {
+          "key": "name",
+          "type": "string",
+          "label": {
+            "en": "Disk name",
+            "fr": "Nom du disque",
+            "de": "Name der Festplatte",
+            "es": "Nombre del disco"
+          }
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model",
+            "fr": "Modèle",
+            "de": "Modell",
+            "es": "Modelo"
+          }
+        },
+        {
+          "key": "temperature",
+          "type": "number",
+          "label": {
+            "en": "Temperature (°C)",
+            "fr": "Température (°C)",
+            "de": "Temperatur (°C)",
+            "es": "Temperatura (°C)"
+          }
+        },
+        {
+          "key": "power_on_hours",
+          "type": "number",
+          "label": {
+            "en": "Power-on hours",
+            "fr": "Heures de fonctionnement",
+            "de": "Betriebsstunden",
+            "es": "Horas de funcionamiento"
+          }
+        },
+        {
+          "key": "collection_age_hours",
+          "type": "number",
+          "label": {
+            "en": "Hours since the collection",
+            "fr": "Heures depuis la collecte",
+            "de": "Stunden seit der Erfassung",
+            "es": "Horas desde la recogida"
+          }
+        },
+        {
+          "key": "attributes",
+          "type": "string",
+          "label": {
+            "en": "Attributes in cause",
+            "fr": "Attributs en cause",
+            "de": "Betroffene Attribute",
+            "es": "Atributos afectados"
+          }
+        },
+        {
+          "key": "sentence",
+          "type": "string",
+          "label": {
+            "en": "Sentence",
+            "fr": "Phrase",
+            "de": "Satz",
+            "es": "Frase"
+          }
+        }
+      ]
+    },
+    {
+      "key": "count_failed_disks",
+      "label": {
+        "en": "Count the failed disks",
+        "fr": "Compter les disques en échec",
+        "de": "Fehlerhafte Festplatten zählen",
+        "es": "Contar los discos con fallo"
+      },
+      "description": {
+        "en": "Counts the disks failed, with a warning, no longer collected and in total, and lists the failed ones, for a report.",
+        "fr": "Compte les disques en échec, en avertissement, plus collectés et au total, et nomme ceux en échec, pour un bilan.",
+        "de": "Zählt die fehlerhaften Festplatten, die mit Warnung, die nicht mehr erfassten und alle, und nennt die fehlerhaften.",
+        "es": "Cuenta los discos con fallo, con advertencia, ya no recogidos y en total, y nombra los que fallan, para un informe."
+      },
+      "timeout_seconds": 60,
+      "outputs": [
+        {
+          "key": "failed",
+          "type": "number",
+          "label": {
+            "en": "Failed disks",
+            "fr": "Disques en échec",
+            "de": "Fehlerhafte Festplatten",
+            "es": "Discos con fallo"
+          }
+        },
+        {
+          "key": "warning",
+          "type": "number",
+          "label": {
+            "en": "Disks with a warning",
+            "fr": "Disques en avertissement",
+            "de": "Festplatten mit Warnung",
+            "es": "Discos con advertencia"
+          }
+        },
+        {
+          "key": "stale",
+          "type": "number",
+          "label": {
+            "en": "Disks no longer collected",
+            "fr": "Disques plus collectés",
+            "de": "Nicht mehr erfasste Festplatten",
+            "es": "Discos ya no recogidos"
+          }
+        },
+        {
+          "key": "total",
+          "type": "number",
+          "label": {
+            "en": "Disks in total",
+            "fr": "Disques au total",
+            "de": "Festplatten insgesamt",
+            "es": "Discos en total"
+          }
+        },
+        {
+          "key": "names",
+          "type": "string",
+          "label": {
+            "en": "Names of the failed disks",
+            "fr": "Noms des disques en échec",
+            "de": "Namen der fehlerhaften Festplatten",
+            "es": "Nombres de los discos con fallo"
+          }
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "scrutiny",
+      "label": {
+        "en": "Scrutiny disks",
+        "fr": "Disques Scrutiny",
+        "de": "Scrutiny-Festplatten",
+        "es": "Discos de Scrutiny"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Failed disks first, then warnings, with their temperature.",
+        "fr": "Les disques en échec d'abord, puis les avertissements, avec leur température.",
+        "de": "Fehlerhafte Festplatten zuerst, dann Warnungen, mit ihrer Temperatur.",
+        "es": "Primero los discos con fallo, luego las advertencias, con su temperatura."
+      },
+      "icon": "hard-drive",
+      "action_timeout_seconds": 60,
+      "settings": [
+        {
+          "key": "disks",
+          "type": "multi_select",
+          "source": "devices",
+          "label": {
+            "en": "Disks (empty: all)",
+            "fr": "Disques (vide : tous)",
+            "de": "Festplatten (leer: alle)",
+            "es": "Discos (vacío: todos)"
+          },
+          "description": {
+            "en": "Only the devices added to Gladys can be chosen.",
+            "fr": "Seuls les appareils ajoutés à Gladys peuvent être choisis.",
+            "de": "Nur die zu Gladys hinzugefügten Geräte können gewählt werden.",
+            "es": "Solo se pueden elegir los dispositivos añadidos a Gladys."
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }

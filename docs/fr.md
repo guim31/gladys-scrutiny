@@ -1,67 +1,152 @@
-# Template de démonstration
+# Scrutiny
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+[Scrutiny](https://github.com/AnalogJ/scrutiny) surveille la santé de vos disques durs et SSD : son
+collecteur lit leurs données S.M.A.R.T. (en général une fois par jour) et son tableau de bord web
+indique quel disque va bien, lequel montre un avertissement et lequel est en échec, avec des seuils
+tirés de taux de panne réels. Cette intégration amène ce tableau de bord dans Gladys : chaque disque
+devient un appareil avec sa santé, sa température et ses compteurs, des scènes réagissent quand un
+disque passe en échec, redevient OK ou n'est plus collecté, et un widget liste d'abord les disques
+qui demandent votre attention.
 
-## Ce que vous obtenez
+Gladys lit le serveur web de Scrutiny : elle ne touche jamais à vos disques. Tout reste sur votre
+réseau (aucun cloud).
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Testée contre un vrai Scrutiny en Docker (v0.9.5, image omnibus), alimenté par de vraies sorties
+`smartctl` de la suite de tests de Scrutiny : disques sains, en avertissement, en échec S.M.A.R.T. et
+Scrutiny, un disque NVMe, une collecte trop ancienne. Pas encore sur une installation réelle : vos
+retours sont les bienvenus dans [les issues](https://github.com/guim31/gladys-scrutiny/issues).
 
-## Configuration
+## Ce qu'il vous faut
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+- Gladys Assistant 5.1.0 ou plus récent.
+- Un serveur web Scrutiny (image `omnibus`, ou `web` + InfluxDB) joignable depuis Gladys, en général
+  sur le port 8080, avec au moins un collecteur qui lui envoie des données. Scrutiny v0.8 et v0.9
+  sont pris en charge.
+- Si un proxy inverse demande une connexion devant Scrutiny : son utilisateur et son mot de passe
+  (authentification basique). Scrutiny lui-même n'a pas de connexion.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+## Mise en route
 
-## Actions
+### 1. Trouver l'adresse de Scrutiny
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+C'est l'adresse de son tableau de bord, par exemple `http://192.168.1.2:8080`. Une adresse copiée
+depuis le navigateur convient aussi (`…/web/dashboard`) : l'intégration garde la partie serveur.
+Derrière un proxy inverse avec un sous-chemin (réglage `basepath` de Scrutiny), saisissez l'adresse
+avec ce sous-chemin.
 
-## Scènes
+### 2. Configurer l'intégration
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+Dans Gladys, ouvrez **Intégrations → Scrutiny → Configuration** :
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+- **Adresse de Scrutiny** : l'adresse trouvée ci-dessus.
+- **Utilisateur du proxy (facultatif)** et **Mot de passe du proxy (facultatif)** : seulement si un
+  proxy inverse les demande.
+- **Intervalle de rafraîchissement** : à quelle fréquence Scrutiny est lu, 15 minutes par défaut. Une
+  requête pour la liste des disques et une pour les réglages à chaque fois ; les attributs d'un
+  disque ne sont relus qu'après une nouvelle collecte.
+- **Collecte trop ancienne après** : au bout de combien de temps sans nouvelle collecte un disque
+  déclenche « Disque plus collecté » (36 heures par défaut, pour un collecteur quotidien).
+- **Langue des noms** : la langue des noms de fonctionnalités (figés à l'ajout d'un appareil) et des
+  textes envoyés aux scènes.
+
+Cliquez ensuite sur **Tester la connexion** : elle indique combien de disques Scrutiny suit, et
+combien sont en échec.
+
+### 3. Ajouter les disques
+
+Ouvrez l'onglet **Découverte** de l'intégration et ajoutez les disques à suivre, ainsi que l'appareil
+**Scrutiny** si vous voulez les totaux. Les disques archivés dans Scrutiny ne sont pas proposés. Un
+disque est identifié par son WWN (son identifiant Scrutiny quand il n'en a pas, comme certains
+disques NVMe) : le changer de port ou de machine garde le même appareil.
+
+## Les appareils
+
+Chaque disque a ces fonctionnalités :
+
+- **Disque en échec** : oui quand Scrutiny marque le disque en échec, comme le fait son tableau de
+  bord (le « seuil de statut » des réglages de Scrutiny : S.M.A.R.T., Scrutiny ou les deux). La
+  condition à utiliser dans les scènes.
+- **Santé** : OK, Avertissement (le disque passe mais un attribut est douteux) ou En échec, en texte.
+- **Température** : à la dernière collecte, en °C.
+- **Heures de fonctionnement** : telles que le disque les donne.
+- **Secteurs réalloués** et **Secteurs en attente** : attributs S.M.A.R.T. 5 et 197, seulement sur
+  les disques qui les donnent (SATA). Un compteur qui grimpe est le premier signe d'un disque qui
+  lâche.
+- **Depuis la dernière collecte** : heures depuis le dernier envoi du collecteur pour ce disque.
+
+L'appareil **Scrutiny** compte les **Disques en échec**, les **Disques en avertissement** et les
+**Disques au total**.
 
 ## Tableau de bord
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+Le widget **Disques Scrutiny** affiche trois tuiles (en échec, avertissements, la température la plus
+haute), puis une ligne par disque : ceux en échec d'abord, puis les avertissements, les disques plus
+collectés et les disques sains, dix lignes au plus. Choisissez des disques dans ses réglages pour
+n'afficher qu'eux. **Actualiser** relit Scrutiny.
+
+## Scènes
+
+### Déclencheurs
+
+- **Un disque passe en échec** : Scrutiny marque un disque en échec après une collecte. Variables :
+  le nom du disque, son modèle, les attributs en échec et sa température.
+- **Un disque redevient OK** : un disque en échec repasse au vert à une nouvelle collecte, ou après un
+  changement du seuil de Scrutiny. Variables : le nom du disque, son modèle et le nombre d'heures en
+  échec.
+- **Disque plus collecté** : plus de collecte pour un disque depuis le délai de la configuration
+  (collecteur arrêté, disque disparu). Un événement par disque. Variables : le nom du disque, son
+  modèle et les heures depuis sa dernière collecte.
+
+Chaque déclencheur peut se limiter à certains disques. Un disque vu pour la première fois ne
+déclenche rien : un disque en échec depuis des mois n'est pas une nouvelle. L'intégration garde le
+dernier état de chaque disque : un disque passé en échec pendant un redémarrage de Gladys ou de
+l'intégration est quand même annoncé, une fois.
+
+### Actions
+
+- **État d'un disque** : lit un disque pour les actions suivantes : en échec ou non, sa santé, son
+  nom, son modèle, sa température, ses heures de fonctionnement, les heures depuis la collecte, les
+  attributs en cause, et une phrase toute prête comme « Samsung SSD 840 (sdd) : En échec, 33 °C,
+  collecté il y a 5 jours. UltraDMA CRC Error Count. »
+- **Compter les disques en échec** : compte les disques en échec, en avertissement, plus collectés et
+  au total, et nomme ceux en échec, pour un bilan.
+
+Les deux relisent Scrutiny quand la dernière lecture date de plus d'une minute.
+
+### Idées de scènes
+
+- **Un disque passe en échec** → envoyer sur Telegram « Disque {disque} en échec : {attributs} », et
+  allumer une lampe en rouge.
+- Chaque dimanche à 10 h → **Compter les disques en échec** → si le nombre dépasse 0, envoyer
+  « {noms} en échec, {avertissements} disque(s) en avertissement ».
+- **Disque plus collecté** → prévenir « Le collecteur Scrutiny de {disque} s'est arrêté il y a
+  {heures} heures » : un NAS de sauvegarde qui ne s'est pas réveillé, un conteneur de collecteur
+  planté.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« Scrutiny ne répond pas »** : vérifiez l'adresse et le port depuis la machine de Gladys, et
+  qu'un pare-feu ne bloque pas.
+- **« Scrutiny répond en erreur »** : sa base de données (InfluxDB) est arrêtée ou pleine ; le
+  tableau de bord de Scrutiny montre la même erreur.
+- **« Une connexion est demandée »** : un proxy inverse protège Scrutiny ; renseignez son
+  utilisateur et son mot de passe (authentification basique seulement).
+- **« L'adresse redirige »** : saisissez directement l'adresse en `https://`.
+- **« Certificat refusé »** : un certificat auto-signé n'est pas accepté ; utilisez l'adresse
+  `http://` sur votre réseau.
+- **Aucun disque** : aucun collecteur n'a encore envoyé de données ; lancez-le une fois
+  (`docker exec scrutiny scrutiny-collector-metrics run` avec l'image omnibus).
+- **Un disque reste « Pas encore collecté »** : il est enregistré mais son collecteur n'a pas pu lire
+  ses données S.M.A.R.T. (boîtier USB, contrôleur RAID) : voir les logs du collecteur.
+- **La santé diffère du tableau de bord de Scrutiny** : rechargez le tableau de bord ; l'intégration
+  lit le même seuil de statut, à l'intervalle choisi.
+
+## Limites
+
+- Les données sont celles de la dernière collecte : avec le collecteur quotidien par défaut, un
+  disque qui lâche à midi apparaît à la collecte suivante.
+- L'historique de Scrutiny, ses notifications et les résultats d'autotests ne sont pas lus ;
+  l'historique de chaque fonctionnalité est gardé par Gladys.
+- Les compteurs de secteurs n'existent que pour les disques SATA ; les disques NVMe et SAS montrent
+  leur santé, leur température et leurs heures.
+- Sans lien avec Scrutiny ni son auteur.
