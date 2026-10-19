@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
 ### Added
 
 - First version: the disks of a Scrutiny web server (v0.8 or v0.9) in Gladys,
@@ -28,4 +30,5 @@ the notes of the version's GitHub Release.
 - Optional basic authentication, for a reverse proxy in front of Scrutiny.
 - English, French, German and Spanish texts and documentation.
 
-[Unreleased]: https://github.com/guim31/gladys-scrutiny/commits/main
+[Unreleased]: https://github.com/guim31/gladys-scrutiny/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-scrutiny/releases/tag/v1.0.0
