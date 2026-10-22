@@ -1,6 +1,6 @@
 {
   "name": "gladys-scrutiny",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Scrutiny disk health (S.M.A.R.T.) in Gladys Assistant: one device per disk, scene triggers when a disk fails, recovers or stops being collected, a status widget.",
   "type": "module",
